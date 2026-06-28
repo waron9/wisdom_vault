@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>지혜 금고 📖</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f0f1a; color: #eee; font-family: 'Noto Sans KR', sans-serif; }
+#root { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
+button { font-family: inherit; }
+textarea, input, select { font-family: inherit; }
+.inp { width: 100%; background: #ffffff12; border: 1px solid #ffffff22; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 13px; margin-bottom: 10px; box-sizing: border-box; }
+.modal-overlay { position: fixed; inset: 0; background: #000000cc; display: flex; align-items: flex-end; z-index: 100; }
+.modal-box { background: #1a1a2e; border-radius: 24px 24px 0 0; padding: 24px; width: 100%; max-width: 480px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ── 설정 ──────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCkevLTZSv2VPxILJZCzh-DzeEF5oomB-U",
+  authDomain: "yunu-thoughts.firebaseapp.com",
+  projectId: "yunu-thoughts",
+  storageBucket: "yunu-thoughts.firebasestorage.app",
+  messagingSenderId: "185714037780",
+  appId: "1:185714037780:web:d2c9c499eba8230ffe4301"
+};
+const CLOUDINARY_CLOUD = "dasalfvtm";
+const CLOUDINARY_PRESET = "azdfmdd7";
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
+
+// ── 상수 ──────────────────────────────────────────────────────────
+const CATEGORIES = ["인성·가치관","철학·사상","실용적 지혜","관계·사랑","용기·도전","감사·행복"];
+const CAT_COLORS = {"인성·가치관":"#6C63FF","철학·사상":"#3AAFA9","실용적 지혜":"#F4A261","관계·사랑":"#E76F51","용기·도전":"#2D6A4F","감사·행복":"#E9C46A"};
+const CAT_ICONS = {"인성·가치관":"🌱","철학·사상":"🔭","실용적 지혜":"🛠️","관계·사랑":"❤️","용기·도전":"🦁","감사·행복":"✨"};
+
+const DEFAULT_WISDOMS = [
+  {id:"d1",category:"인성·가치관",text:"정직함은 가장 강한 무기다. 거짓말은 쌓이면 무너지지만, 진실은 쌓이면 탑이 된다.",child:"거짓말하면 나중에 더 힘들어져. 처음부터 솔직한 게 훨씬 편해!",author:"아빠의 지혜"},
+  {id:"d2",category:"철학·사상",text:"나는 생각한다, 고로 나는 존재한다. 스스로 생각하는 사람이 세상을 바꾼다.",child:"네가 뭔가를 궁금해하고 생각하는 것, 그게 바로 너를 특별하게 만드는 거야.",author:"데카르트"},
+  {id:"d3",category:"실용적 지혜",text:"돈을 쓰기 전에 항상 '필요한가, 원하는가'를 구분하라.",child:"장난감 살 때 '꼭 필요해?' 한 번만 생각해봐!",author:"아빠의 지혜"},
+  {id:"d4",category:"관계·사랑",text:"사람을 판단할 때 그가 잘 나갈 때가 아니라, 힘들 때 어떻게 행동하는지를 봐라.",child:"친구가 속상해할 때 옆에 있어주는 사람이 진짜 친구야.",author:"아빠의 지혜"},
+  {id:"d5",category:"용기·도전",text:"실패는 끝이 아니라 데이터다. 넘어진 횟수보다 일어선 횟수가 한 번 더 많으면 된다.",child:"넘어져도 괜찮아. 다시 일어나는 게 진짜 용감한 거야!",author:"아빠의 지혜"},
+  {id:"d6",category:"감사·행복",text:"행복은 목적지가 아니라 여정 중에 있다. 지금 이 순간에 감사할 줄 아는 사람이 가장 부유하다.",child:"오늘 좋았던 일 한 가지만 생각해봐. 거기서 행복이 시작돼!",author:"아빠의 지혜"},
+  {id:"d7",category:"인성·가치관",text:"약속은 가장 작은 계약이다. 작은 약속을 지키는 사람이 큰 신뢰를 얻는다.",child:"친구한테 한다고 한 건 꼭 해야 해. 그게 믿음이야.",author:"아빠의 지혜"},
+  {id:"d8",category:"철학·사상",text:"너 자신을 알라. 자신의 강점과 약점을 아는 사람이 가장 현명한 사람이다.",child:"내가 뭘 잘하는지, 뭘 어려워하는지 알면 더 잘 할 수 있어!",author:"소크라테스"},
+  {id:"d9",category:"실용적 지혜",text:"책을 읽는 것은 천 명의 현인과 대화하는 것과 같다. 독서는 가장 저렴한 시간 여행이다.",child:"책 속에는 신기한 세계가 엄청 많아. 오늘 책 한 권 같이 읽을까?",author:"아빠의 지혜"},
+  {id:"d10",category:"관계·사랑",text:"경청은 말하는 것보다 어렵고, 더 가치 있다. 상대의 말을 끝까지 듣는 사람이 사랑받는다.",child:"친구가 말할 때 끝까지 들어줘. 그게 제일 좋은 선물이야.",author:"아빠의 지혜"},
+  {id:"d11",category:"용기·도전",text:"편안함 속에서는 성장이 없다. 조금 불편하고 두려운 것이 바로 성장의 신호다.",child:"처음 하는 건 다 좀 어렵고 무서워. 근데 해보면 금방 잘 돼!",author:"아빠의 지혜"},
+  {id:"d12",category:"감사·행복",text:"비교는 행복의 도둑이다. 남과 비교하지 말고 어제의 나와 비교하라.",child:"친구보다 잘하려 하지 말고, 어제 나보다 조금만 더 잘하면 돼!",author:"아빠의 지혜"},
+];
+
+// ── 상태 ──────────────────────────────────────────────────────────
+let state = {
+  loading: true,
+  tab: "today",
+  wisdoms: DEFAULT_WISDOMS,
+  capsules: [],
+  todayIdx: new Date().getDate() % DEFAULT_WISDOMS.length,
+  selCat: "전체",
+  childMode: false,
+  showAdd: false,
+  showCapsule: false,
+  showDetail: null,
+  showCapsuleDetail: null,
+  newW: {category:CATEGORIES[0],text:"",child:"",author:""},
+  newC: {title:"",content:"",photo:null},
+  saving: false,
+  uploadMsg: "",
+};
+
+function setState(patch) {
+  state = {...state, ...patch};
+  render();
+}
+
+// ── Firebase ───────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const [wSnap, cSnap] = await Promise.all([
+      db.collection("wisdoms").get(),
+      db.collection("capsules").orderBy("date","desc").get()
+    ]);
+    const dbW = wSnap.docs.map(d => ({...d.data(), id: d.id}));
+    setState({
+      loading: false,
+      wisdoms: dbW.length ? dbW : DEFAULT_WISDOMS,
+      capsules: cSnap.docs.map(d => ({...d.data(), id: d.id}))
+    });
+  } catch(e) {
+    console.error("로드 실패:", e);
+    setState({loading: false});
+  }
+}
+
+async function saveWisdom() {
+  const w = state.newW;
+  if (!w.text.trim()) return;
+  setState({saving:true});
+  try {
+    const ref = await db.collection("wisdoms").add({...w, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+    setState({
+      wisdoms: [...state.wisdoms, {...w, id: ref.id}],
+      newW: {category:CATEGORIES[0],text:"",child:"",author:""},
+      showAdd: false,
+      saving: false
+    });
+  } catch(e) { alert("저장 실패: "+e.message); setState({saving:false}); }
+}
+
+async function saveCapsule() {
+  const c = state.newC;
+  if (!c.content.trim()) return;
+  setState({saving:true});
+  try {
+    let photoURL = null;
+    if (c.photo) {
+      setState({uploadMsg:"📷 사진 업로드 중..."});
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+        method:"POST",
+        body: JSON.stringify({file:c.photo, upload_preset:CLOUDINARY_PRESET}),
+        headers:{"Content-Type":"application/json"}
+      });
+      const data = await res.json();
+      photoURL = data.secure_url;
+    }
+    const data = {title:c.title, content:c.content, photoURL, date:new Date().toISOString().slice(0,10)};
+    const ref = await db.collection("capsules").add({...data, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+    setState({
+      capsules: [{...data, id:ref.id}, ...state.capsules],
+      newC: {title:"",content:"",photo:null},
+      showCapsule: false,
+      saving: false,
+      uploadMsg: ""
+    });
+  } catch(e) { alert("저장 실패: "+e.message); setState({saving:false, uploadMsg:""}); }
+}
+
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => setState({newC: {...state.newC, photo: ev.target.result}});
+  r.readAsDataURL(file);
+}
+
+// ── 렌더 ──────────────────────────────────────────────────────────
+function render() {
+  const s = state;
+  const today = s.wisdoms[s.todayIdx % s.wisdoms.length];
+  const filtered = s.selCat === "전체" ? s.wisdoms : s.wisdoms.filter(w => w.category === s.selCat);
+
+  if (s.loading) {
+    document.getElementById("root").innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px">
+        <div style="font-size:48px">📖</div>
+        <div style="font-size:16px;font-weight:700">지혜 금고 불러오는 중...</div>
+        <div style="font-size:12px;color:#666">Firebase에서 데이터를 가져오고 있어요</div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById("root").innerHTML = `
+    <!-- 헤더 -->
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:24px 20px 16px;border-bottom:1px solid #ffffff18">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:22px;font-weight:700">📖 지혜 금고</div>
+          <div style="font-size:11px;color:#aaa;margin-top:3px">아들에게 남기는 아빠의 지혜 <span style="background:#6C63FF33;border-radius:10px;padding:2px 8px;font-size:10px;color:#9C8FFF">☁️ 클라우드</span></div>
+        </div>
+        <button onclick="setState({childMode:!state.childMode})" style="background:${s.childMode?"#6C63FF":"#ffffff18"};border:none;border-radius:20px;padding:6px 14px;color:#fff;font-size:12px;cursor:pointer">
+          ${s.childMode?"👦 아이 모드":"👨 어른 모드"}
+        </button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        ${[["today","오늘의 지혜"],["archive","지혜 창고"],["capsule","타임캡슐"]].map(([k,v])=>`
+          <button onclick="setState({tab:'${k}'})" style="flex:1;background:${s.tab===k?"#6C63FF":"#ffffff12"};border:none;border-radius:10px;padding:8px 0;color:${s.tab===k?"#fff":"#aaa"};font-size:12px;font-weight:${s.tab===k?700:400};cursor:pointer">${v}</button>
+        `).join("")}
+      </div>
+    </div>
+
+    <div style="padding:20px 16px">
+
+    ${s.tab==="today" && today ? `
+      <div style="background:linear-gradient(135deg,${CAT_COLORS[today.category]}22,${CAT_COLORS[today.category]}11);border:1px solid ${CAT_COLORS[today.category]}44;border-radius:20px;padding:24px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="background:${CAT_COLORS[today.category]};border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600">${CAT_ICONS[today.category]} ${today.category}</span>
+          <span style="font-size:11px;color:#888">${today.author||""}</span>
+        </div>
+        <p style="font-size:17px;line-height:1.8;margin:0;font-weight:500;color:#f0f0f0">${s.childMode?today.child||today.text:today.text}</p>
+      </div>
+      ${!s.childMode && today.child ? `
+        <div style="background:#ffffff0a;border:1px solid #ffffff15;border-radius:16px;padding:16px;margin-bottom:16px">
+          <div style="font-size:11px;color:#6C63FF;font-weight:700;margin-bottom:8px">👦 아이에게 이렇게 말해줘요</div>
+          <p style="font-size:15px;color:#ccc;margin:0;line-height:1.7">"${today.child}"</p>
+        </div>` : ""}
+      <button onclick="setState({todayIdx:(state.todayIdx+1)%state.wisdoms.length})" style="width:100%;background:#6C63FF;border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px">다음 지혜 보기 →</button>
+      <div style="text-align:center;font-size:12px;color:#666">총 ${s.wisdoms.length}개의 지혜가 모여 있어요</div>
+    ` : ""}
+
+    ${s.tab==="archive" ? `
+      <button onclick="setState({showAdd:true})" style="width:100%;background:linear-gradient(135deg,#6C63FF,#9C88FF);border:none;border-radius:14px;padding:14px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px">✍️ 나만의 지혜 추가하기</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+        ${["전체",...CATEGORIES].map(c=>`
+          <button onclick="setState({selCat:'${c}'})" style="background:${s.selCat===c?(CAT_COLORS[c]||"#6C63FF"):"#ffffff12"};border:none;border-radius:20px;padding:6px 12px;color:${s.selCat===c?"#fff":"#aaa"};font-size:11px;cursor:pointer;font-weight:${s.selCat===c?700:400}">
+            ${c==="전체"?"✨ 전체":`${CAT_ICONS[c]} ${c}`}
+          </button>`).join("")}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${filtered.map((w,i)=>`
+          <div onclick='showWisdomDetail(${i})' style="background:#ffffff0a;border:1px solid ${CAT_COLORS[w.category]}33;border-radius:14px;padding:16px;cursor:pointer">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:11px;color:${CAT_COLORS[w.category]};font-weight:600">${CAT_ICONS[w.category]} ${w.category}</span>
+              <span style="font-size:11px;color:#666">${w.author||""}</span>
+            </div>
+            <p style="font-size:13px;color:#ccc;margin:0;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${s.childMode?w.child||w.text:w.text}</p>
+          </div>`).join("")}
+      </div>
+    ` : ""}
+
+    ${s.tab==="capsule" ? `
+      <button onclick="setState({showCapsule:true})" style="width:100%;background:linear-gradient(135deg,#E9C46A,#F4A261);border:none;border-radius:14px;padding:14px;color:#1a1a2e;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px">💌 새 메시지 남기기</button>
+      <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #E9C46A33;border-radius:20px;padding:20px;margin-bottom:16px;text-align:center">
+        <div style="font-size:32px;margin-bottom:8px">🪄</div>
+        <div style="font-size:15px;font-weight:700;color:#E9C46A;margin-bottom:6px">성인이 된 아들에게</div>
+        <div style="font-size:12px;color:#888;line-height:1.6">지금 이 마음을, 아들이 성인이 되었을 때<br/>전달할 메시지를 담아두세요.</div>
+      </div>
+      ${s.capsules.length===0 ? `<div style="text-align:center;color:#555;font-size:13px;padding:20px 0">아직 메시지가 없어요.<br/>첫 번째 타임캡슐을 남겨보세요 💌</div>` : ""}
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${s.capsules.map((c,i)=>`
+          <div onclick='showCapsuleDetail(${i})' style="background:#ffffff0a;border:1px solid #E9C46A22;border-radius:14px;overflow:hidden;cursor:pointer">
+            ${c.photoURL ? `<img src="${c.photoURL}" style="width:100%;height:160px;object-fit:cover;display:block"/>` : ""}
+            <div style="padding:16px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:13px;font-weight:700;color:#E9C46A">💌 ${c.title||"아들에게"}</span>
+                <span style="font-size:11px;color:#666">${c.date||""}</span>
+              </div>
+              <p style="font-size:13px;color:#ccc;margin:0;line-height:1.7;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${c.content}</p>
+            </div>
+          </div>`).join("")}
+      </div>
+    ` : ""}
+
+    </div>
+
+    <!-- 지혜 추가 모달 -->
+    ${s.showAdd ? `
+      <div class="modal-overlay" onclick="setState({showAdd:false})">
+        <div class="modal-box" onclick="event.stopPropagation()">
+          <div style="font-size:16px;font-weight:700;margin-bottom:16px">✍️ 나만의 지혜 추가</div>
+          <select class="inp" onchange="setState({newW:{...state.newW,category:this.value}})">
+            ${CATEGORIES.map(c=>`<option value="${c}" ${s.newW.category===c?"selected":""} style="background:#1a1a2e">${c}</option>`).join("")}
+          </select>
+          <textarea class="inp" rows="3" placeholder="지혜의 내용을 적어주세요" oninput="setState({newW:{...state.newW,text:this.value}})" style="resize:none">${s.newW.text}</textarea>
+          <textarea class="inp" rows="2" placeholder="아이에게 쉽게 설명하는 말 (선택)" oninput="setState({newW:{...state.newW,child:this.value}})" style="resize:none">${s.newW.child}</textarea>
+          <input class="inp" placeholder="출처 / 저자" oninput="setState({newW:{...state.newW,author:this.value}})" value="${s.newW.author}"/>
+          <div style="display:flex;gap:8px">
+            <button onclick="setState({showAdd:false})" style="flex:1;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer">취소</button>
+            <button onclick="saveWisdom()" style="flex:2;background:#6C63FF;border:none;border-radius:12px;padding:12px;color:#fff;font-weight:700;cursor:pointer">${s.saving?"저장 중...":"☁️ 저장하기"}</button>
+          </div>
+        </div>
+      </div>` : ""}
+
+    <!-- 타임캡슐 추가 모달 -->
+    ${s.showCapsule ? `
+      <div class="modal-overlay" onclick="setState({showCapsule:false,newC:{title:'',content:'',photo:null}})">
+        <div class="modal-box" onclick="event.stopPropagation()">
+          <div style="font-size:16px;font-weight:700;margin-bottom:16px">💌 타임캡슐 메시지</div>
+          <input class="inp" placeholder="제목 (예: 20살 생일에)" oninput="setState({newC:{...state.newC,title:this.value}})" value="${s.newC.title}"/>
+          <textarea class="inp" rows="4" placeholder="성인이 된 아들에게 전하고 싶은 말..." oninput="setState({newC:{...state.newC,content:this.value}})" style="resize:none">${s.newC.content}</textarea>
+          <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(event)" style="display:none"/>
+          ${s.newC.photo
+            ? `<div style="position:relative;margin-bottom:10px">
+                <img src="${s.newC.photo}" style="width:100%;height:140px;object-fit:cover;border-radius:10px"/>
+                <button onclick="setState({newC:{...state.newC,photo:null}})" style="position:absolute;top:6px;right:6px;background:#00000099;border:none;border-radius:50%;width:28px;height:28px;color:#fff;cursor:pointer">✕</button>
+              </div>`
+            : `<button onclick="document.getElementById('photoInput').click()" class="inp" style="border:1px dashed #ffffff33;color:#aaa;cursor:pointer">📷 사진 추가하기</button>`}
+          ${s.uploadMsg ? `<div style="font-size:12px;color:#E9C46A;margin-bottom:8px;text-align:center">${s.uploadMsg}</div>` : ""}
+          <div style="display:flex;gap:8px">
+            <button onclick="setState({showCapsule:false,newC:{title:'',content:'',photo:null}})" style="flex:1;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer">취소</button>
+            <button onclick="saveCapsule()" style="flex:2;background:#E9C46A;border:none;border-radius:12px;padding:12px;color:#1a1a2e;font-weight:700;cursor:pointer">${s.saving?(s.uploadMsg||"저장 중..."):"☁️ 저장하기"}</button>
+          </div>
+        </div>
+      </div>` : ""}
+
+    <!-- 지혜 상세 모달 -->
+    ${s.showDetail ? `
+      <div class="modal-overlay" onclick="setState({showDetail:null})">
+        <div class="modal-box" onclick="event.stopPropagation()">
+          <span style="background:${CAT_COLORS[s.showDetail.category]};border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600">${CAT_ICONS[s.showDetail.category]} ${s.showDetail.category}</span>
+          <p style="font-size:16px;line-height:1.8;margin-top:16px;color:#f0f0f0">${s.showDetail.text}</p>
+          ${s.showDetail.child ? `
+            <div style="background:#ffffff0a;border:1px solid #6C63FF33;border-radius:14px;padding:14px;margin-top:12px">
+              <div style="font-size:11px;color:#6C63FF;font-weight:700;margin-bottom:6px">👦 아이에게</div>
+              <p style="font-size:14px;color:#ccc;margin:0;line-height:1.7">"${s.showDetail.child}"</p>
+            </div>` : ""}
+          <div style="font-size:11px;color:#666;margin-top:12px;text-align:right">— ${s.showDetail.author||""}</div>
+          <button onclick="setState({showDetail:null})" style="width:100%;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer;margin-top:16px">닫기</button>
+        </div>
+      </div>` : ""}
+
+    <!-- 타임캡슐 상세 모달 -->
+    ${s.showCapsuleDetail ? `
+      <div class="modal-overlay" onclick="setState({showCapsuleDetail:null})">
+        <div class="modal-box" onclick="event.stopPropagation()" style="padding:0;overflow:hidden">
+          ${s.showCapsuleDetail.photoURL ? `<img src="${s.showCapsuleDetail.photoURL}" style="width:100%;max-height:240px;object-fit:cover;display:block"/>` : ""}
+          <div style="padding:24px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+              <span style="font-size:15px;font-weight:700;color:#E9C46A">💌 ${s.showCapsuleDetail.title||"아들에게"}</span>
+              <span style="font-size:11px;color:#666">${s.showCapsuleDetail.date||""}</span>
+            </div>
+            <p style="font-size:14px;color:#ccc;margin:0;line-height:1.8">${s.showCapsuleDetail.content}</p>
+            <button onclick="setState({showCapsuleDetail:null})" style="width:100%;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer;margin-top:20px">닫기</button>
+          </div>
+        </div>
+      </div>` : ""}
+  `;
+
+  // 이벤트 재연결
+  bindEvents();
+}
+
+function bindEvents() {
+  const pi = document.getElementById("photoInput");
+  if (pi) pi.onchange = handlePhoto;
+}
+
+function showWisdomDetail(i) {
+  const filtered = state.selCat === "전체" ? state.wisdoms : state.wisdoms.filter(w => w.category === state.selCat);
+  setState({showDetail: filtered[i]});
+}
+
+function showCapsuleDetail(i) {
+  setState({showCapsuleDetail: state.capsules[i]});
+}
+
+// ── 시작 ──────────────────────────────────────────────────────────
+render();
+loadData();
+</script>
+</body>
+</html>
