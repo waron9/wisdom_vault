@@ -3,28 +3,46 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>지혜 금고 📖</title>
-
-<!-- Firebase -->
+<title>윤우 생각 📖</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0f0f1a; color: #eee; font-family: 'Noto Sans KR', sans-serif; }
+body { font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; transition: background 0.3s; }
 #root { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
-button { font-family: inherit; }
-textarea, input, select { font-family: inherit; }
-.inp { width: 100%; background: #ffffff12; border: 1px solid #ffffff22; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 13px; margin-bottom: 10px; box-sizing: border-box; }
-.modal-overlay { position: fixed; inset: 0; background: #000000cc; display: flex; align-items: flex-end; z-index: 100; }
-.modal-box { background: #1a1a2e; border-radius: 24px 24px 0 0; padding: 24px; width: 100%; max-width: 480px; margin: 0 auto; }
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; }
+
+/* 테마 */
+body.theme-dark  { --bg: #0f0f1a; --bg2: #1a1a2e; --bg3: #16213e; --card: #ffffff0a; --border: #ffffff18; --text: #eeeeee; --text2: #aaaaaa; --text3: #666666; --primary: #6C63FF; --primary2: #9C88FF; --gold: #E9C46A; --gold2: #F4A261; }
+body.theme-light { --bg: #f0f4ff; --bg2: #ffffff; --bg3: #e8eeff; --card: #ffffff; --border: #dde3ff; --text: #1a1a3e; --text2: #555577; --text3: #9999aa; --primary: #3355ff; --primary2: #6688ff; --gold: #ffaa00; --gold2: #ff6633; }
+body.theme-pink  { --bg: #fff0f5; --bg2: #ffe4ef; --bg3: #ffd6e7; --card: #ffffff; --border: #ffb3d1; --text: #4a1030; --text2: #884466; --text3: #cc88aa; --primary: #ff4488; --primary2: #ff77aa; --gold: #ff88cc; --gold2: #ffaadd; }
+
+body { background: var(--bg); color: var(--text); }
+
+.header { background: linear-gradient(135deg, var(--bg2), var(--bg3)); padding: 24px 20px 16px; border-bottom: 1px solid var(--border); }
+.tab-btn { flex: 1; border: none; border-radius: 10px; padding: 8px 0; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+.tab-btn.active { background: var(--primary); color: #fff; font-weight: 700; }
+.tab-btn.inactive { background: var(--card); color: var(--text2); }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; cursor: pointer; margin-bottom: 10px; }
+.inp { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; margin-bottom: 10px; box-sizing: border-box; outline: none; }
+textarea.inp { resize: none; }
+select.inp { appearance: none; }
+
+.modal-overlay { position: fixed; inset: 0; background: #00000099; display: flex; align-items: flex-end; z-index: 100; }
+.modal-box { background: var(--bg2); border-radius: 24px 24px 0 0; padding: 24px; width: 100%; max-width: 480px; margin: 0 auto; max-height: 90vh; overflow-y: auto; }
+.btn-primary { background: var(--primary); border: none; border-radius: 12px; padding: 12px; color: #fff; font-weight: 700; font-size: 14px; width: 100%; }
+.btn-secondary { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; color: var(--text2); font-size: 14px; width: 100%; }
+.badge { border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+.tag { border-radius: 10px; padding: 2px 8px; font-size: 10px; }
 </style>
 </head>
-<body>
+<body class="theme-dark">
 <div id="root"></div>
 
 <script>
-// ── 설정 ──────────────────────────────────────────────────────────
+// ── Firebase 설정 ────────────────────────────────────────────────
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCkevLTZSv2VPxILJZCzh-DzeEF5oomB-U",
   authDomain: "yunu-thoughts.firebaseapp.com",
@@ -39,10 +57,16 @@ const CLOUDINARY_PRESET = "azdfmdd7";
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
-// ── 상수 ──────────────────────────────────────────────────────────
+// ── 상수 ────────────────────────────────────────────────────────
 const CATEGORIES = ["인성·가치관","철학·사상","실용적 지혜","관계·사랑","용기·도전","감사·행복"];
-const CAT_COLORS = {"인성·가치관":"#6C63FF","철학·사상":"#3AAFA9","실용적 지혜":"#F4A261","관계·사랑":"#E76F51","용기·도전":"#2D6A4F","감사·행복":"#E9C46A"};
-const CAT_ICONS = {"인성·가치관":"🌱","철학·사상":"🔭","실용적 지혜":"🛠️","관계·사랑":"❤️","용기·도전":"🦁","감사·행복":"✨"};
+const CAT_COLORS = {
+  "인성·가치관":"#6C63FF","철학·사상":"#3AAFA9","실용적 지혜":"#F4A261",
+  "관계·사랑":"#E76F51","용기·도전":"#2D6A4F","감사·행복":"#E9C46A"
+};
+const CAT_ICONS = {
+  "인성·가치관":"🌱","철학·사상":"🔭","실용적 지혜":"🛠️",
+  "관계·사랑":"❤️","용기·도전":"🦁","감사·행복":"✨"
+};
 
 const DEFAULT_WISDOMS = [
   {id:"d1",category:"인성·가치관",text:"정직함은 가장 강한 무기다. 거짓말은 쌓이면 무너지지만, 진실은 쌓이면 탑이 된다.",child:"거짓말하면 나중에 더 힘들어져. 처음부터 솔직한 게 훨씬 편해!",author:"아빠의 지혜"},
@@ -59,293 +83,392 @@ const DEFAULT_WISDOMS = [
   {id:"d12",category:"감사·행복",text:"비교는 행복의 도둑이다. 남과 비교하지 말고 어제의 나와 비교하라.",child:"친구보다 잘하려 하지 말고, 어제 나보다 조금만 더 잘하면 돼!",author:"아빠의 지혜"},
 ];
 
-// ── 상태 ──────────────────────────────────────────────────────────
-let state = {
-  loading: true,
-  tab: "today",
-  wisdoms: DEFAULT_WISDOMS,
-  capsules: [],
-  todayIdx: new Date().getDate() % DEFAULT_WISDOMS.length,
-  selCat: "전체",
-  childMode: false,
-  showAdd: false,
-  showCapsule: false,
-  showDetail: null,
-  showCapsuleDetail: null,
-  newW: {category:CATEGORIES[0],text:"",child:"",author:""},
-  newC: {title:"",content:"",photo:null},
-  saving: false,
-  uploadMsg: "",
-};
+// ── 앱 클래스 ────────────────────────────────────────────────────
+class App {
+  constructor() {
+    this.tab = "today";
+    this.wisdoms = DEFAULT_WISDOMS;
+    this.capsules = [];
+    this.todayIdx = new Date().getDate() % DEFAULT_WISDOMS.length;
+    this.selCat = "전체";
+    this.childMode = false;
+    this.theme = localStorage.getItem("theme") || "dark";
+    this.showAdd = false;
+    this.showCapsule = false;
+    this.showDetail = null;
+    this.showCapsuleDetail = null;
+    this.showSettings = false;
+    this.showEditModal = null;
+    this.saving = false;
+    this.loading = true;
 
-function setState(patch) {
-  state = {...state, ...patch};
-  render();
-}
-
-// ── Firebase ───────────────────────────────────────────────────────
-async function loadData() {
-  try {
-    const [wSnap, cSnap] = await Promise.all([
-      db.collection("wisdoms").get(),
-      db.collection("capsules").orderBy("date","desc").get()
-    ]);
-    const dbW = wSnap.docs.map(d => ({...d.data(), id: d.id}));
-    setState({
-      loading: false,
-      wisdoms: dbW.length ? dbW : DEFAULT_WISDOMS,
-      capsules: cSnap.docs.map(d => ({...d.data(), id: d.id}))
-    });
-  } catch(e) {
-    console.error("로드 실패:", e);
-    setState({loading: false});
+    document.body.className = "theme-" + this.theme;
+    this.root = document.getElementById("root");
+    this.init();
   }
-}
 
-async function saveWisdom() {
-  const w = state.newW;
-  if (!w.text.trim()) return;
-  setState({saving:true});
-  try {
-    const ref = await db.collection("wisdoms").add({...w, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
-    setState({
-      wisdoms: [...state.wisdoms, {...w, id: ref.id}],
-      newW: {category:CATEGORIES[0],text:"",child:"",author:""},
-      showAdd: false,
-      saving: false
+  async init() {
+    try {
+      const [wSnap, cSnap] = await Promise.all([
+        db.collection("wisdoms").get(),
+        db.collection("capsules").orderBy("date","desc").get()
+      ]);
+      const dbW = wSnap.docs.map(d => ({...d.data(), id: d.id}));
+      if (dbW.length) this.wisdoms = dbW;
+      this.capsules = cSnap.docs.map(d => ({...d.data(), id: d.id}));
+    } catch(e) { console.error(e); }
+    this.loading = false;
+    this.render();
+  }
+
+  setTheme(t) {
+    this.theme = t;
+    localStorage.setItem("theme", t);
+    document.body.className = "theme-" + t;
+    this.render();
+  }
+
+  // ── 지혜 저장 ──
+  async saveWisdom() {
+    const text = document.getElementById("w_text")?.value?.trim();
+    const child = document.getElementById("w_child")?.value?.trim();
+    const author = document.getElementById("w_author")?.value?.trim();
+    const category = document.getElementById("w_cat")?.value;
+    if (!text) return;
+    this.saving = true; this.render();
+    try {
+      const data = {category, text, child: child||"", author: author||"아빠의 지혜"};
+      const ref = await db.collection("wisdoms").add({...data, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+      this.wisdoms.push({...data, id: ref.id});
+      this.showAdd = false;
+    } catch(e) { alert("저장 실패: "+e.message); }
+    this.saving = false; this.render();
+  }
+
+  // ── 지혜 수정 ──
+  async updateWisdom() {
+    const id = this.showEditModal.id;
+    const text = document.getElementById("e_text")?.value?.trim();
+    const child = document.getElementById("e_child")?.value?.trim();
+    const author = document.getElementById("e_author")?.value?.trim();
+    const category = document.getElementById("e_cat")?.value;
+    if (!text) return;
+    this.saving = true; this.render();
+    try {
+      const data = {category, text, child: child||"", author: author||"아빠의 지혜"};
+      await db.collection("wisdoms").doc(id).update(data);
+      this.wisdoms = this.wisdoms.map(w => w.id === id ? {...w, ...data} : w);
+      this.showEditModal = null;
+      this.showDetail = null;
+    } catch(e) { alert("수정 실패: "+e.message); }
+    this.saving = false; this.render();
+  }
+
+  // ── 지혜 삭제 ──
+  async deleteWisdom(id) {
+    if (!confirm("이 지혜를 삭제할까요?")) return;
+    try {
+      await db.collection("wisdoms").doc(id).delete();
+      this.wisdoms = this.wisdoms.filter(w => w.id !== id);
+      this.showDetail = null;
+    } catch(e) { alert("삭제 실패: "+e.message); }
+    this.render();
+  }
+
+  // ── 타임캡슐 저장 ──
+  async saveCapsule() {
+    const title = document.getElementById("c_title")?.value?.trim();
+    const content = document.getElementById("c_content")?.value?.trim();
+    if (!content) return;
+    this.saving = true; this.render();
+    try {
+      let photoURL = null;
+      const fileInput = document.getElementById("c_photo");
+      if (fileInput?.files?.[0]) {
+        const base64 = await this.toBase64(fileInput.files[0]);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+          method: "POST",
+          body: JSON.stringify({file: base64, upload_preset: CLOUDINARY_PRESET}),
+          headers: {"Content-Type":"application/json"}
+        });
+        const data = await res.json();
+        photoURL = data.secure_url;
+      }
+      const data = {title: title||"", content, photoURL, date: new Date().toISOString().slice(0,10)};
+      const ref = await db.collection("capsules").add({...data, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+      this.capsules.unshift({...data, id: ref.id});
+      this.showCapsule = false;
+    } catch(e) { alert("저장 실패: "+e.message); }
+    this.saving = false; this.render();
+  }
+
+  // ── 타임캡슐 삭제 ──
+  async deleteCapsule(id) {
+    if (!confirm("이 타임캡슐을 삭제할까요?")) return;
+    try {
+      await db.collection("capsules").doc(id).delete();
+      this.capsules = this.capsules.filter(c => c.id !== id);
+      this.showCapsuleDetail = null;
+    } catch(e) { alert("삭제 실패: "+e.message); }
+    this.render();
+  }
+
+  toBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = e => res(e.target.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
     });
-  } catch(e) { alert("저장 실패: "+e.message); setState({saving:false}); }
-}
+  }
 
-async function saveCapsule() {
-  const c = state.newC;
-  if (!c.content.trim()) return;
-  setState({saving:true});
-  try {
-    let photoURL = null;
-    if (c.photo) {
-      setState({uploadMsg:"📷 사진 업로드 중..."});
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
-        method:"POST",
-        body: JSON.stringify({file:c.photo, upload_preset:CLOUDINARY_PRESET}),
-        headers:{"Content-Type":"application/json"}
-      });
-      const data = await res.json();
-      photoURL = data.secure_url;
+  // ── 렌더 ────────────────────────────────────────────────────────
+  render() {
+    if (this.loading) {
+      this.root.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px"><div style="font-size:48px">📖</div><div style="font-size:16px;font-weight:700;color:var(--text)">윤우 생각 불러오는 중...</div><div style="font-size:12px;color:var(--text3)">잠깐만 기다려주세요</div></div>`;
+      return;
     }
-    const data = {title:c.title, content:c.content, photoURL, date:new Date().toISOString().slice(0,10)};
-    const ref = await db.collection("capsules").add({...data, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
-    setState({
-      capsules: [{...data, id:ref.id}, ...state.capsules],
-      newC: {title:"",content:"",photo:null},
-      showCapsule: false,
-      saving: false,
-      uploadMsg: ""
-    });
-  } catch(e) { alert("저장 실패: "+e.message); setState({saving:false, uploadMsg:""}); }
-}
 
-function handlePhoto(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const r = new FileReader();
-  r.onload = ev => setState({newC: {...state.newC, photo: ev.target.result}});
-  r.readAsDataURL(file);
-}
+    const today = this.wisdoms[this.todayIdx % this.wisdoms.length];
+    const filtered = this.selCat === "전체" ? this.wisdoms : this.wisdoms.filter(w => w.category === this.selCat);
 
-// ── 렌더 ──────────────────────────────────────────────────────────
-function render() {
-  const s = state;
-  const today = s.wisdoms[s.todayIdx % s.wisdoms.length];
-  const filtered = s.selCat === "전체" ? s.wisdoms : s.wisdoms.filter(w => w.category === s.selCat);
+    this.root.innerHTML = `
+      <!-- 헤더 -->
+      <div class="header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:22px;font-weight:700;color:var(--text)">📖 윤우 생각</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:3px">
+              아들에게 남기는 아빠의 지혜
+              <span class="tag" style="background:var(--primary);opacity:0.7;color:#fff;margin-left:4px">☁️ 클라우드</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button onclick="app.setChildMode()" style="background:${this.childMode?"var(--primary)":"var(--card)"};border:1px solid var(--border);border-radius:20px;padding:6px 12px;color:var(--text);font-size:11px">${this.childMode?"👦 아이":"👨 어른"}</button>
+            <button onclick="app.toggleSettings()" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;color:var(--text);font-size:14px">⚙️</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          ${[["today","오늘의 지혜"],["archive","지혜 창고"],["capsule","타임캡슐"]].map(([k,v])=>`
+            <button class="tab-btn ${this.tab===k?"active":"inactive"}" onclick="app.setTab('${k}')">${v}</button>
+          `).join("")}
+        </div>
+      </div>
 
-  if (s.loading) {
-    document.getElementById("root").innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px">
-        <div style="font-size:48px">📖</div>
-        <div style="font-size:16px;font-weight:700">지혜 금고 불러오는 중...</div>
-        <div style="font-size:12px;color:#666">Firebase에서 데이터를 가져오고 있어요</div>
-      </div>`;
-    return;
+      <div style="padding:20px 16px">
+
+        ${this.tab==="today" && today ? `
+          <div style="background:linear-gradient(135deg,${CAT_COLORS[today.category]}22,${CAT_COLORS[today.category]}11);border:1px solid ${CAT_COLORS[today.category]}55;border-radius:20px;padding:24px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <span class="badge" style="background:${CAT_COLORS[today.category]};color:#fff">${CAT_ICONS[today.category]} ${today.category}</span>
+              <span style="font-size:11px;color:var(--text3)">${today.author||""}</span>
+            </div>
+            <p style="font-size:17px;line-height:1.8;margin:0;font-weight:500;color:var(--text)">${this.childMode?today.child||today.text:today.text}</p>
+          </div>
+          ${!this.childMode && today.child ? `
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px">
+              <div style="font-size:11px;color:var(--primary);font-weight:700;margin-bottom:8px">👦 아이에게 이렇게 말해줘요</div>
+              <p style="font-size:15px;color:var(--text2);margin:0;line-height:1.7">"${today.child}"</p>
+            </div>` : ""}
+          <button onclick="app.nextWisdom()" style="width:100%;background:var(--primary);border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">다음 지혜 보기 →</button>
+          <div style="text-align:center;font-size:12px;color:var(--text3)">총 ${this.wisdoms.length}개의 지혜가 모여 있어요</div>
+        ` : ""}
+
+        ${this.tab==="archive" ? `
+          <button onclick="app.openAdd()" style="width:100%;background:linear-gradient(135deg,var(--primary),var(--primary2));border:none;border-radius:14px;padding:14px;color:#fff;font-size:14px;font-weight:700;margin-bottom:16px">✍️ 나만의 지혜 추가하기</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+            ${["전체",...CATEGORIES].map(c=>`
+              <button onclick="app.setCat('${c}')" style="background:${this.selCat===c?(CAT_COLORS[c]||"var(--primary)"):"var(--card)"};border:1px solid var(--border);border-radius:20px;padding:6px 12px;color:${this.selCat===c?"#fff":"var(--text2)"};font-size:11px;font-weight:${this.selCat===c?700:400}">
+                ${c==="전체"?"✨ 전체":`${CAT_ICONS[c]} ${c}`}
+              </button>`).join("")}
+          </div>
+          ${filtered.map((w,i) => `
+            <div class="card" style="border-color:${CAT_COLORS[w.category]}44" onclick="app.openDetail(${i})">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:11px;color:${CAT_COLORS[w.category]};font-weight:600">${CAT_ICONS[w.category]} ${w.category}</span>
+                <span style="font-size:11px;color:var(--text3)">${w.author||""}</span>
+              </div>
+              <p style="font-size:13px;color:var(--text2);margin:0;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${this.childMode?w.child||w.text:w.text}</p>
+            </div>`).join("")}
+        ` : ""}
+
+        ${this.tab==="capsule" ? `
+          <button onclick="app.openCapsule()" style="width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:14px;padding:14px;color:#1a1a2e;font-size:14px;font-weight:700;margin-bottom:16px">💌 새 메시지 남기기</button>
+          <div style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--gold);opacity:0.8;border-radius:20px;padding:20px;margin-bottom:16px;text-align:center">
+            <div style="font-size:32px;margin-bottom:8px">🪄</div>
+            <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:6px">성인이 된 아들에게</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6">지금 이 마음을, 아들이 성인이 되었을 때<br/>전달할 메시지를 담아두세요.</div>
+          </div>
+          ${this.capsules.length===0 ? `<div style="text-align:center;color:var(--text3);font-size:13px;padding:20px 0">아직 메시지가 없어요.<br/>첫 번째 타임캡슐을 남겨보세요 💌</div>` : ""}
+          ${this.capsules.map((c,i) => `
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;cursor:pointer" onclick="app.openCapsuleDetail(${i})">
+              ${c.photoURL ? `<img src="${c.photoURL}" style="width:100%;height:160px;object-fit:cover;display:block"/>` : ""}
+              <div style="padding:16px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-size:13px;font-weight:700;color:var(--gold)">💌 ${c.title||"아들에게"}</span>
+                  <span style="font-size:11px;color:var(--text3)">${c.date||""}</span>
+                </div>
+                <p style="font-size:13px;color:var(--text2);margin:0;line-height:1.7;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${c.content}</p>
+              </div>
+            </div>`).join("")}
+        ` : ""}
+      </div>
+
+      <!-- 설정 모달 -->
+      ${this.showSettings ? `
+        <div class="modal-overlay" onclick="app.toggleSettings()">
+          <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="font-size:16px;font-weight:700;margin-bottom:20px;color:var(--text)">⚙️ 설정</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:12px;font-weight:600">색상 테마</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+              <button onclick="app.setTheme('dark')" style="padding:14px 16px;border-radius:12px;border:2px solid ${this.theme==="dark"?"var(--primary)":"var(--border)"};background:#0f0f1a;color:#eee;text-align:left;font-size:13px">
+                🌙 <strong>다크</strong> — 기본 어두운 테마
+              </button>
+              <button onclick="app.setTheme('light')" style="padding:14px 16px;border-radius:12px;border:2px solid ${this.theme==="light"?"#3355ff":"#dde3ff"};background:#f0f4ff;color:#1a1a3e;text-align:left;font-size:13px">
+                ☀️ <strong>라이트</strong> — 파랑·노랑·빨강 밝은 테마
+              </button>
+              <button onclick="app.setTheme('pink')" style="padding:14px 16px;border-radius:12px;border:2px solid ${this.theme==="pink"?"#ff4488":"#ffb3d1"};background:#fff0f5;color:#4a1030;text-align:left;font-size:13px">
+                🌸 <strong>러블리</strong> — 핑크 감성 테마
+              </button>
+            </div>
+            <button class="btn-secondary" onclick="app.toggleSettings()">닫기</button>
+          </div>
+        </div>` : ""}
+
+      <!-- 지혜 추가 모달 -->
+      ${this.showAdd ? `
+        <div class="modal-overlay">
+          <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text)">✍️ 나만의 지혜 추가</div>
+            <select id="w_cat" class="inp">
+              ${CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join("")}
+            </select>
+            <textarea id="w_text" class="inp" rows="3" placeholder="지혜의 내용을 적어주세요"></textarea>
+            <textarea id="w_child" class="inp" rows="2" placeholder="아이에게 쉽게 설명하는 말 (선택)"></textarea>
+            <input id="w_author" class="inp" placeholder="출처 / 저자 (예: 공자, 아빠의 지혜)"/>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <button class="btn-secondary" onclick="app.closeAdd()">취소</button>
+              <button class="btn-primary" onclick="app.saveWisdom()" style="flex:2">${this.saving?"저장 중...":"☁️ 저장하기"}</button>
+            </div>
+          </div>
+        </div>` : ""}
+
+      <!-- 지혜 수정 모달 -->
+      ${this.showEditModal ? `
+        <div class="modal-overlay">
+          <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text)">✏️ 지혜 수정</div>
+            <select id="e_cat" class="inp">
+              ${CATEGORIES.map(c=>`<option value="${c}" ${this.showEditModal.category===c?"selected":""}>${c}</option>`).join("")}
+            </select>
+            <textarea id="e_text" class="inp" rows="3" placeholder="지혜의 내용">${this.showEditModal.text||""}</textarea>
+            <textarea id="e_child" class="inp" rows="2" placeholder="아이에게 쉽게 설명하는 말 (선택)">${this.showEditModal.child||""}</textarea>
+            <input id="e_author" class="inp" placeholder="출처 / 저자" value="${this.showEditModal.author||""}"/>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <button class="btn-secondary" onclick="app.closeEdit()">취소</button>
+              <button class="btn-primary" onclick="app.updateWisdom()" style="flex:2">${this.saving?"저장 중...":"✅ 수정 완료"}</button>
+            </div>
+          </div>
+        </div>` : ""}
+
+      <!-- 지혜 상세 모달 -->
+      ${this.showDetail ? `
+        <div class="modal-overlay" onclick="app.closeDetail()">
+          <div class="modal-box" onclick="event.stopPropagation()">
+            <span class="badge" style="background:${CAT_COLORS[this.showDetail.category]};color:#fff">${CAT_ICONS[this.showDetail.category]} ${this.showDetail.category}</span>
+            <p style="font-size:16px;line-height:1.8;margin-top:16px;color:var(--text)">${this.showDetail.text}</p>
+            ${this.showDetail.child ? `
+              <div style="background:var(--card);border:1px solid var(--primary);opacity:0.5;border-radius:14px;padding:14px;margin-top:12px">
+                <div style="font-size:11px;color:var(--primary);font-weight:700;margin-bottom:6px">👦 아이에게</div>
+                <p style="font-size:14px;color:var(--text2);margin:0;line-height:1.7">"${this.showDetail.child}"</p>
+              </div>` : ""}
+            <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:right">— ${this.showDetail.author||""}</div>
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <button class="btn-secondary" onclick="app.closeDetail()">닫기</button>
+              <button onclick="app.openEdit()" style="flex:1;background:var(--primary);border:none;border-radius:12px;padding:12px;color:#fff;font-size:14px">✏️ 수정</button>
+              <button onclick="app.deleteWisdom('${this.showDetail.id}')" style="flex:1;background:#ff4444;border:none;border-radius:12px;padding:12px;color:#fff;font-size:14px">🗑️ 삭제</button>
+            </div>
+          </div>
+        </div>` : ""}
+
+      <!-- 타임캡슐 추가 모달 -->
+      ${this.showCapsule ? `
+        <div class="modal-overlay">
+          <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text)">💌 타임캡슐 메시지</div>
+            <input id="c_title" class="inp" placeholder="제목 (예: 20살 생일에)"/>
+            <textarea id="c_content" class="inp" rows="4" placeholder="성인이 된 아들에게 전하고 싶은 말..."></textarea>
+            <div style="margin-bottom:10px">
+              <input type="file" id="c_photo" accept="image/*" style="display:none"/>
+              <button onclick="document.getElementById('c_photo').click()" style="width:100%;background:var(--card);border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--text2);font-size:13px">📷 사진 추가하기</button>
+            </div>
+            <div id="photo_preview"></div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <button class="btn-secondary" onclick="app.closeCapsule()">취소</button>
+              <button class="btn-primary" onclick="app.saveCapsule()" style="flex:2">${this.saving?"저장 중...":"☁️ 저장하기"}</button>
+            </div>
+          </div>
+        </div>` : ""}
+
+      <!-- 타임캡슐 상세 모달 -->
+      ${this.showCapsuleDetail ? `
+        <div class="modal-overlay" onclick="app.closeCapsuleDetail()">
+          <div class="modal-box" onclick="event.stopPropagation()" style="padding:0">
+            ${this.showCapsuleDetail.photoURL ? `<img src="${this.showCapsuleDetail.photoURL}" style="width:100%;max-height:240px;object-fit:cover;display:block;border-radius:24px 24px 0 0"/>` : ""}
+            <div style="padding:24px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+                <span style="font-size:15px;font-weight:700;color:var(--gold)">💌 ${this.showCapsuleDetail.title||"아들에게"}</span>
+                <span style="font-size:11px;color:var(--text3)">${this.showCapsuleDetail.date||""}</span>
+              </div>
+              <p style="font-size:14px;color:var(--text2);margin:0;line-height:1.8">${this.showCapsuleDetail.content}</p>
+              <div style="display:flex;gap:8px;margin-top:20px">
+                <button class="btn-secondary" onclick="app.closeCapsuleDetail()">닫기</button>
+                <button onclick="app.deleteCapsule('${this.showCapsuleDetail.id}')" style="flex:1;background:#ff4444;border:none;border-radius:12px;padding:12px;color:#fff;font-size:14px">🗑️ 삭제</button>
+              </div>
+            </div>
+          </div>
+        </div>` : ""}
+    `;
+
+    // 사진 미리보기
+    const photoInput = document.getElementById("c_photo");
+    if (photoInput) {
+      photoInput.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const preview = document.getElementById("photo_preview");
+          if (preview) preview.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:140px;object-fit:cover;border-radius:10px;margin-bottom:10px"/>`;
+        };
+        reader.readAsDataURL(file);
+      };
+    }
   }
 
-  document.getElementById("root").innerHTML = `
-    <!-- 헤더 -->
-    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:24px 20px 16px;border-bottom:1px solid #ffffff18">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:22px;font-weight:700">📖 지혜 금고</div>
-          <div style="font-size:11px;color:#aaa;margin-top:3px">아들에게 남기는 아빠의 지혜 <span style="background:#6C63FF33;border-radius:10px;padding:2px 8px;font-size:10px;color:#9C8FFF">☁️ 클라우드</span></div>
-        </div>
-        <button onclick="setState({childMode:!state.childMode})" style="background:${s.childMode?"#6C63FF":"#ffffff18"};border:none;border-radius:20px;padding:6px 14px;color:#fff;font-size:12px;cursor:pointer">
-          ${s.childMode?"👦 아이 모드":"👨 어른 모드"}
-        </button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:16px">
-        ${[["today","오늘의 지혜"],["archive","지혜 창고"],["capsule","타임캡슐"]].map(([k,v])=>`
-          <button onclick="setState({tab:'${k}'})" style="flex:1;background:${s.tab===k?"#6C63FF":"#ffffff12"};border:none;border-radius:10px;padding:8px 0;color:${s.tab===k?"#fff":"#aaa"};font-size:12px;font-weight:${s.tab===k?700:400};cursor:pointer">${v}</button>
-        `).join("")}
-      </div>
-    </div>
-
-    <div style="padding:20px 16px">
-
-    ${s.tab==="today" && today ? `
-      <div style="background:linear-gradient(135deg,${CAT_COLORS[today.category]}22,${CAT_COLORS[today.category]}11);border:1px solid ${CAT_COLORS[today.category]}44;border-radius:20px;padding:24px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <span style="background:${CAT_COLORS[today.category]};border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600">${CAT_ICONS[today.category]} ${today.category}</span>
-          <span style="font-size:11px;color:#888">${today.author||""}</span>
-        </div>
-        <p style="font-size:17px;line-height:1.8;margin:0;font-weight:500;color:#f0f0f0">${s.childMode?today.child||today.text:today.text}</p>
-      </div>
-      ${!s.childMode && today.child ? `
-        <div style="background:#ffffff0a;border:1px solid #ffffff15;border-radius:16px;padding:16px;margin-bottom:16px">
-          <div style="font-size:11px;color:#6C63FF;font-weight:700;margin-bottom:8px">👦 아이에게 이렇게 말해줘요</div>
-          <p style="font-size:15px;color:#ccc;margin:0;line-height:1.7">"${today.child}"</p>
-        </div>` : ""}
-      <button onclick="setState({todayIdx:(state.todayIdx+1)%state.wisdoms.length})" style="width:100%;background:#6C63FF;border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px">다음 지혜 보기 →</button>
-      <div style="text-align:center;font-size:12px;color:#666">총 ${s.wisdoms.length}개의 지혜가 모여 있어요</div>
-    ` : ""}
-
-    ${s.tab==="archive" ? `
-      <button onclick="setState({showAdd:true})" style="width:100%;background:linear-gradient(135deg,#6C63FF,#9C88FF);border:none;border-radius:14px;padding:14px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px">✍️ 나만의 지혜 추가하기</button>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
-        ${["전체",...CATEGORIES].map(c=>`
-          <button onclick="setState({selCat:'${c}'})" style="background:${s.selCat===c?(CAT_COLORS[c]||"#6C63FF"):"#ffffff12"};border:none;border-radius:20px;padding:6px 12px;color:${s.selCat===c?"#fff":"#aaa"};font-size:11px;cursor:pointer;font-weight:${s.selCat===c?700:400}">
-            ${c==="전체"?"✨ 전체":`${CAT_ICONS[c]} ${c}`}
-          </button>`).join("")}
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${filtered.map((w,i)=>`
-          <div onclick='showWisdomDetail(${i})' style="background:#ffffff0a;border:1px solid ${CAT_COLORS[w.category]}33;border-radius:14px;padding:16px;cursor:pointer">
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-              <span style="font-size:11px;color:${CAT_COLORS[w.category]};font-weight:600">${CAT_ICONS[w.category]} ${w.category}</span>
-              <span style="font-size:11px;color:#666">${w.author||""}</span>
-            </div>
-            <p style="font-size:13px;color:#ccc;margin:0;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${s.childMode?w.child||w.text:w.text}</p>
-          </div>`).join("")}
-      </div>
-    ` : ""}
-
-    ${s.tab==="capsule" ? `
-      <button onclick="setState({showCapsule:true})" style="width:100%;background:linear-gradient(135deg,#E9C46A,#F4A261);border:none;border-radius:14px;padding:14px;color:#1a1a2e;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px">💌 새 메시지 남기기</button>
-      <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #E9C46A33;border-radius:20px;padding:20px;margin-bottom:16px;text-align:center">
-        <div style="font-size:32px;margin-bottom:8px">🪄</div>
-        <div style="font-size:15px;font-weight:700;color:#E9C46A;margin-bottom:6px">성인이 된 아들에게</div>
-        <div style="font-size:12px;color:#888;line-height:1.6">지금 이 마음을, 아들이 성인이 되었을 때<br/>전달할 메시지를 담아두세요.</div>
-      </div>
-      ${s.capsules.length===0 ? `<div style="text-align:center;color:#555;font-size:13px;padding:20px 0">아직 메시지가 없어요.<br/>첫 번째 타임캡슐을 남겨보세요 💌</div>` : ""}
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${s.capsules.map((c,i)=>`
-          <div onclick='showCapsuleDetail(${i})' style="background:#ffffff0a;border:1px solid #E9C46A22;border-radius:14px;overflow:hidden;cursor:pointer">
-            ${c.photoURL ? `<img src="${c.photoURL}" style="width:100%;height:160px;object-fit:cover;display:block"/>` : ""}
-            <div style="padding:16px">
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-                <span style="font-size:13px;font-weight:700;color:#E9C46A">💌 ${c.title||"아들에게"}</span>
-                <span style="font-size:11px;color:#666">${c.date||""}</span>
-              </div>
-              <p style="font-size:13px;color:#ccc;margin:0;line-height:1.7;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${c.content}</p>
-            </div>
-          </div>`).join("")}
-      </div>
-    ` : ""}
-
-    </div>
-
-    <!-- 지혜 추가 모달 -->
-    ${s.showAdd ? `
-      <div class="modal-overlay" onclick="setState({showAdd:false})">
-        <div class="modal-box" onclick="event.stopPropagation()">
-          <div style="font-size:16px;font-weight:700;margin-bottom:16px">✍️ 나만의 지혜 추가</div>
-          <select class="inp" onchange="setState({newW:{...state.newW,category:this.value}})">
-            ${CATEGORIES.map(c=>`<option value="${c}" ${s.newW.category===c?"selected":""} style="background:#1a1a2e">${c}</option>`).join("")}
-          </select>
-          <textarea class="inp" rows="3" placeholder="지혜의 내용을 적어주세요" oninput="setState({newW:{...state.newW,text:this.value}})" style="resize:none">${s.newW.text}</textarea>
-          <textarea class="inp" rows="2" placeholder="아이에게 쉽게 설명하는 말 (선택)" oninput="setState({newW:{...state.newW,child:this.value}})" style="resize:none">${s.newW.child}</textarea>
-          <input class="inp" placeholder="출처 / 저자" oninput="setState({newW:{...state.newW,author:this.value}})" value="${s.newW.author}"/>
-          <div style="display:flex;gap:8px">
-            <button onclick="setState({showAdd:false})" style="flex:1;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer">취소</button>
-            <button onclick="saveWisdom()" style="flex:2;background:#6C63FF;border:none;border-radius:12px;padding:12px;color:#fff;font-weight:700;cursor:pointer">${s.saving?"저장 중...":"☁️ 저장하기"}</button>
-          </div>
-        </div>
-      </div>` : ""}
-
-    <!-- 타임캡슐 추가 모달 -->
-    ${s.showCapsule ? `
-      <div class="modal-overlay" onclick="setState({showCapsule:false,newC:{title:'',content:'',photo:null}})">
-        <div class="modal-box" onclick="event.stopPropagation()">
-          <div style="font-size:16px;font-weight:700;margin-bottom:16px">💌 타임캡슐 메시지</div>
-          <input class="inp" placeholder="제목 (예: 20살 생일에)" oninput="setState({newC:{...state.newC,title:this.value}})" value="${s.newC.title}"/>
-          <textarea class="inp" rows="4" placeholder="성인이 된 아들에게 전하고 싶은 말..." oninput="setState({newC:{...state.newC,content:this.value}})" style="resize:none">${s.newC.content}</textarea>
-          <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(event)" style="display:none"/>
-          ${s.newC.photo
-            ? `<div style="position:relative;margin-bottom:10px">
-                <img src="${s.newC.photo}" style="width:100%;height:140px;object-fit:cover;border-radius:10px"/>
-                <button onclick="setState({newC:{...state.newC,photo:null}})" style="position:absolute;top:6px;right:6px;background:#00000099;border:none;border-radius:50%;width:28px;height:28px;color:#fff;cursor:pointer">✕</button>
-              </div>`
-            : `<button onclick="document.getElementById('photoInput').click()" class="inp" style="border:1px dashed #ffffff33;color:#aaa;cursor:pointer">📷 사진 추가하기</button>`}
-          ${s.uploadMsg ? `<div style="font-size:12px;color:#E9C46A;margin-bottom:8px;text-align:center">${s.uploadMsg}</div>` : ""}
-          <div style="display:flex;gap:8px">
-            <button onclick="setState({showCapsule:false,newC:{title:'',content:'',photo:null}})" style="flex:1;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer">취소</button>
-            <button onclick="saveCapsule()" style="flex:2;background:#E9C46A;border:none;border-radius:12px;padding:12px;color:#1a1a2e;font-weight:700;cursor:pointer">${s.saving?(s.uploadMsg||"저장 중..."):"☁️ 저장하기"}</button>
-          </div>
-        </div>
-      </div>` : ""}
-
-    <!-- 지혜 상세 모달 -->
-    ${s.showDetail ? `
-      <div class="modal-overlay" onclick="setState({showDetail:null})">
-        <div class="modal-box" onclick="event.stopPropagation()">
-          <span style="background:${CAT_COLORS[s.showDetail.category]};border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600">${CAT_ICONS[s.showDetail.category]} ${s.showDetail.category}</span>
-          <p style="font-size:16px;line-height:1.8;margin-top:16px;color:#f0f0f0">${s.showDetail.text}</p>
-          ${s.showDetail.child ? `
-            <div style="background:#ffffff0a;border:1px solid #6C63FF33;border-radius:14px;padding:14px;margin-top:12px">
-              <div style="font-size:11px;color:#6C63FF;font-weight:700;margin-bottom:6px">👦 아이에게</div>
-              <p style="font-size:14px;color:#ccc;margin:0;line-height:1.7">"${s.showDetail.child}"</p>
-            </div>` : ""}
-          <div style="font-size:11px;color:#666;margin-top:12px;text-align:right">— ${s.showDetail.author||""}</div>
-          <button onclick="setState({showDetail:null})" style="width:100%;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer;margin-top:16px">닫기</button>
-        </div>
-      </div>` : ""}
-
-    <!-- 타임캡슐 상세 모달 -->
-    ${s.showCapsuleDetail ? `
-      <div class="modal-overlay" onclick="setState({showCapsuleDetail:null})">
-        <div class="modal-box" onclick="event.stopPropagation()" style="padding:0;overflow:hidden">
-          ${s.showCapsuleDetail.photoURL ? `<img src="${s.showCapsuleDetail.photoURL}" style="width:100%;max-height:240px;object-fit:cover;display:block"/>` : ""}
-          <div style="padding:24px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-              <span style="font-size:15px;font-weight:700;color:#E9C46A">💌 ${s.showCapsuleDetail.title||"아들에게"}</span>
-              <span style="font-size:11px;color:#666">${s.showCapsuleDetail.date||""}</span>
-            </div>
-            <p style="font-size:14px;color:#ccc;margin:0;line-height:1.8">${s.showCapsuleDetail.content}</p>
-            <button onclick="setState({showCapsuleDetail:null})" style="width:100%;background:#ffffff18;border:none;border-radius:12px;padding:12px;color:#aaa;cursor:pointer;margin-top:20px">닫기</button>
-          </div>
-        </div>
-      </div>` : ""}
-  `;
-
-  // 이벤트 재연결
-  bindEvents();
+  // ── 헬퍼 ────────────────────────────────────────────────────────
+  setTab(t) { this.tab = t; this.render(); }
+  setCat(c) { this.selCat = c; this.render(); }
+  setChildMode() { this.childMode = !this.childMode; this.render(); }
+  nextWisdom() { this.todayIdx = (this.todayIdx + 1) % this.wisdoms.length; this.render(); }
+  toggleSettings() { this.showSettings = !this.showSettings; this.render(); }
+  openAdd() { this.showAdd = true; this.render(); }
+  closeAdd() { this.showAdd = false; this.render(); }
+  openCapsule() { this.showCapsule = true; this.render(); }
+  closeCapsule() { this.showCapsule = false; this.render(); }
+  openDetail(i) {
+    const filtered = this.selCat === "전체" ? this.wisdoms : this.wisdoms.filter(w => w.category === this.selCat);
+    this.showDetail = filtered[i];
+    this.render();
+  }
+  closeDetail() { this.showDetail = null; this.render(); }
+  openEdit() { this.showEditModal = {...this.showDetail}; this.showDetail = null; this.render(); }
+  closeEdit() { this.showEditModal = null; this.render(); }
+  openCapsuleDetail(i) { this.showCapsuleDetail = this.capsules[i]; this.render(); }
+  closeCapsuleDetail() { this.showCapsuleDetail = null; this.render(); }
 }
 
-function bindEvents() {
-  const pi = document.getElementById("photoInput");
-  if (pi) pi.onchange = handlePhoto;
-}
-
-function showWisdomDetail(i) {
-  const filtered = state.selCat === "전체" ? state.wisdoms : state.wisdoms.filter(w => w.category === state.selCat);
-  setState({showDetail: filtered[i]});
-}
-
-function showCapsuleDetail(i) {
-  setState({showCapsuleDetail: state.capsules[i]});
-}
-
-// ── 시작 ──────────────────────────────────────────────────────────
-render();
-loadData();
+const app = new App();
 </script>
 </body>
 </html>
